@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>শুনসুই কিয়োরাকু | Bug Bounty Hunter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+/* ============================
+   CSS VARIABLES & RESET
+   ============================ */
+:root {
+  --primary: #00ff88;
+  --secondary: #00c46a;
+  --bg: #050705;
+  --text: #e6fff2;
+  --muted: #8fa89b;
+  --border: rgba(0,255,140,0.14);
+  --card-bg: rgba(255,255,255,0.03);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Hind Siliguri', sans-serif;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+a { text-decoration: none; color: inherit; }
+img { max-width: 100%; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
+
+/* ============================
+   UTILITY CLASSES
+   ============================ */
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+
+.glass {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+}
+
+.btn-primary {
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  color: #03130a;
+  font-weight: 700;
+  padding: 12px 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  font-family: 'Hind Siliguri', sans-serif;
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,255,136,0.4);
+}
+
+.btn-outline {
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text);
+  font-weight: 600;
+  padding: 12px 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  transition: border-color 0.2s, color 0.2s;
+  font-family: 'Hind Siliguri', sans-serif;
+}
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+
+.grad-text {
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.cursor-blink::after {
+  content: '▌';
+  color: var(--primary);
+  margin-left: 2px;
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ============================
+   LAYOUT
+   ============================ */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+section { padding: 80px 0; }
+
+/* ============================
+   NAVBAR
+   ============================ */
+#navbar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+  transition: background 0.3s;
+  padding: 16px 0;
+}
+#navbar.scrolled {
+  background: rgba(5,7,5,0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.nav-logo-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.nav-logo-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700; font-size: 13px;
+  color: #03130a;
+  flex-shrink: 0;
+}
+.nav-links {
+  display: flex;
+  gap: 32px;
+  list-style: none;
+}
+.nav-links a {
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--primary); }
+
+/* Hamburger (mobile) */
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex-direction: column;
+  gap: 5px;
+  padding: 4px;
+}
+.hamburger span {
+  display: block;
+  width: 24px; height: 2px;
+  background: var(--text);
+  border-radius: 2px;
+  transition: 0.3s;
+}
+.mobile-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0; right: 0;
+  background: rgba(5,7,5,0.97);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  flex-direction: column;
+  gap: 16px;
+}
+.mobile-menu.open { display: flex; }
+.mobile-menu a { font-size: 16px; font-weight: 500; }
+.mobile-menu a:hover { color: var(--primary); }
+
+/* ============================
+   HERO
+   ============================ */
+#home {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding-top: 100px;
+  padding-bottom: 60px;
+}
+.hero-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+.availability-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--primary);
+  margin-bottom: 24px;
+}
+.pulse-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+.hero-h1 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 20px;
+}
+.hero-desc {
+  font-size: 17px;
+  color: var(--muted);
+  max-width: 520px;
+  margin-bottom: 32px;
+  line-height: 1.7;
+}
+.hero-btns {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+.socials-row {
+  display: flex;
+  gap: 12px;
+}
+.social-icon {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  transition: background 0.2s, color 0.2s;
+}
+.social-icon:hover {
+  background: var(--primary) !important;
+  color: #03130a !important;
+}
+
+/* Terminal Card */
+.terminal-card {
+  border-radius: 16px;
+  padding: 24px;
+}
+.terminal-dots {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.terminal-dots span {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+}
+.terminal-body {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+.terminal-body .accent { color: var(--primary); }
+
+/* ============================
+   ABOUT
+   ============================ */
+.section-title {
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 48px;
+}
+.about-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+.about-card {
+  border-radius: 20px;
+  padding: 32px;
+}
+.about-card p {
+  color: var(--muted);
+  line-height: 1.8;
+  margin-bottom: 16px;
+}
+.about-card p:last-child { margin-bottom: 0; }
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.stat-card {
+  border-radius: 20px;
+  padding: 32px 24px;
+  text-align: center;
+}
+.stat-num {
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--primary);
+  margin-bottom: 8px;
+  display: block;
+}
+.stat-label { color: var(--muted); font-size: 15px; }
+
+/* ============================
+   SKILLS SECTION
+   ============================ */
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 0;
+}
+.skill-item {
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  transition: border-color 0.2s;
+}
+.skill-item:hover { border-color: var(--primary); }
+.skill-item i { color: var(--primary); font-size: 18px; width: 20px; text-align: center; }
+
+/* ============================
+   WRITEUPS
+   ============================ */
+.writeups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+.writeup-card {
+  border-radius: 20px;
+  overflow: hidden;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.writeup-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+}
+.writeup-inner { padding: 24px; }
+.writeup-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.sev-badge {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  border: 1px solid;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+.sev-critical { color: #ff4d4d; border-color: rgba(255,77,77,.5); background: rgba(255,77,77,.1); }
+.sev-high     { color: #ffb020; border-color: rgba(255,176,32,.5); background: rgba(255,176,32,.1); }
+.sev-medium   { color: var(--primary); border-color: rgba(0,255,136,.3); background: rgba(0,255,136,.08); }
+.sev-low      { color: var(--muted); border-color: rgba(143,168,155,.3); background: rgba(143,168,155,.08); }
+
+.writeup-date { font-size: 12px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.writeup-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+.writeup-excerpt { font-size: 14px; color: var(--muted); margin-bottom: 16px; line-height: 1.6; }
+.writeup-link {
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: gap 0.2s;
+}
+.writeup-link:hover { gap: 10px; }
+
+/* ============================
+   CONTACT
+   ============================ */
+#contact .container { max-width: 800px; }
+.contact-card {
+  border-radius: 24px;
+  padding: 48px;
+  text-align: center;
+}
+.contact-text { color: var(--muted); margin-bottom: 24px; font-size: 16px; line-height: 1.7; }
+.contact-email {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(16px, 3vw, 22px);
+  color: var(--primary);
+  transition: opacity 0.2s;
+}
+.contact-email:hover { opacity: 0.7; }
+
+/* ============================
+   FOOTER
+   ============================ */
+footer {
+  padding: 32px 0;
+  text-align: center;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ============================
+   ADMIN PANEL
+   ============================ */
+#adminPanel {
+  position: fixed;
+  top: 0; right: -440px;
+  width: 100%; max-width: 420px;
+  height: 100vh;
+  background: #080d09;
+  border-left: 2px solid var(--primary);
+  z-index: 9999;
+  transition: right 0.3s ease;
+  overflow-y: auto;
+  box-shadow: -10px 0 40px rgba(0,0,0,0.6);
+}
+#adminPanel.active { right: 0; }
+.admin-header {
+  position: sticky;
+  top: 0;
+  background: var(--primary);
+  color: #03130a;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  font-size: 16px;
+  z-index: 10;
+}
+.admin-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #03130a;
+  line-height: 1;
+}
+.admin-body { padding: 16px; }
+.admin-section {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.admin-section:last-child { border-bottom: none; }
+.admin-section-title {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+.admin-label {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+  margin-top: 10px;
+}
+.admin-label:first-child { margin-top: 0; }
+.admin-input {
+  width: 100%;
+  background: #050705;
+  border: 1px solid rgba(0,255,136,0.2);
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  resize: vertical;
+}
+.admin-input:focus { border-color: var(--primary); }
+.admin-input[type="color"] { height: 40px; padding: 4px; cursor: pointer; }
+.admin-select {
+  width: 100%;
+  background: #050705;
+  border: 1px solid rgba(0,255,136,0.2);
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  outline: none;
+}
+.admin-btn-save {
+  width: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  color: #03130a;
+  font-weight: 700;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  margin-bottom: 10px;
+  font-family: 'Hind Siliguri', sans-serif;
+  transition: opacity 0.2s;
+}
+.admin-btn-save:hover { opacity: 0.85; }
+.admin-btn-reset {
+  width: 100%;
+  background: rgba(255,77,77,0.1);
+  color: #ff6b6b;
+  border: 1px solid rgba(255,77,77,0.3);
+  font-weight: 700;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: 'Hind Siliguri', sans-serif;
+  transition: background 0.2s;
+}
+.admin-btn-reset:hover { background: rgba(255,77,77,0.2); }
+.admin-btn-add {
+  width: 100%;
+  border: 1px dashed rgba(0,255,136,0.4);
+  color: var(--primary);
+  background: none;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-top: 8px;
+  font-family: 'Hind Siliguri', sans-serif;
+  transition: background 0.2s;
+}
+.admin-btn-add:hover { background: rgba(0,255,136,0.05); }
+.admin-btn-delete {
+  color: #ff6b6b;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 4px 0;
+}
+.writeup-edit-block {
+  background: rgba(0,255,136,0.03);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.social-edit-row { display: flex; gap: 8px; margin-bottom: 8px; }
+
+/* ============================
+   RESPONSIVE
+   ============================ */
+@media (max-width: 768px) {
+  .hero-inner { grid-template-columns: 1fr; }
+  .hero-terminal { display: none; }
+  .hero-h1 { font-size: 2rem; }
+  .about-grid { grid-template-columns: 1fr; }
+  .nav-links { display: none; }
+  .nav-hire-btn { display: none; }
+  .hamburger { display: flex; }
+  .writeups-grid { grid-template-columns: 1fr; }
+  .contact-card { padding: 32px 20px; }
+  section { padding: 60px 0; }
+}
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .hero-btns { flex-direction: column; }
+  .btn-primary, .btn-outline { justify-content: center; }
+}
+
+/* ANIMATION */
+.fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>
+</head>
+<body>
+
+<!-- ============================
+     NAVBAR
+     ============================ -->
+<nav id="navbar">
+  <div class="container">
+    <div class="nav-inner">
+      <a href="#home" class="nav-logo-box">
+        <div class="nav-logo-icon font-mono" id="navLogoText">SK</div>
+        <span class="font-mono" style="font-weight:600;font-size:16px;" id="navName">shunsui@bugbounty</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#home">হোম</a></li>
+        <li><a href="#about">সম্পর্কে</a></li>
+        <li><a href="#skills">দক্ষতা</a></li>
+        <li><a href="#writeups">রাইটআপ</a></li>
+        <li><a href="#contact">যোগাযোগ</a></li>
+      </ul>
+      <a href="#contact" class="btn-primary nav-hire-btn" style="padding:10px 22px;font-size:14px;">হায়ার করুন</a>
+      <button class="hamburger" id="hamburgerBtn" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="mobile-menu" id="mobileMenu">
+      <a href="#home" onclick="closeMobileMenu()">হোম</a>
+      <a href="#about" onclick="closeMobileMenu()">সম্পর্কে</a>
+      <a href="#skills" onclick="closeMobileMenu()">দক্ষতা</a>
+      <a href="#writeups" onclick="closeMobileMenu()">রাইটআপ</a>
+      <a href="#contact" onclick="closeMobileMenu()">যোগাযোগ</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================
+     HERO
+     ============================ -->
+<section id="home">
+  <div class="container">
+    <div class="hero-inner">
+      <!-- Left -->
+      <div>
+        <div class="availability-badge glass">
+          <span class="pulse-dot"></span>
+          <span id="heroAvailability">নতুন এনগেজমেন্টের জন্য উন্মুক্ত</span>
+        </div>
+        <h1 class="hero-h1">
+          আমি <span class="grad-text" id="heroName">শুনসুই কিয়োরাকু</span><br>
+          একজন <span id="typedRole" class="font-mono cursor-blink" style="color:var(--primary);"></span>
+        </h1>
+        <p class="hero-desc" id="heroDesc">ওয়েব অ্যাপ্লিকেশনে ভালনারেবিলিটি খুঁজে বের করা এবং রেসপন্সিবল ডিসক্লোজারের মাধ্যমে সংস্থাগুলোকে নিরাপদ রাখাই আমার কাজ।</p>
+        <div class="hero-btns">
+          <a href="#writeups" class="btn-primary"><i class="fa-solid fa-bug"></i> রাইটআপ দেখুন</a>
+          <a href="#contact" class="btn-outline">কথা বলুন</a>
+        </div>
+        <div class="socials-row" id="socialsRow"></div>
+      </div>
+      <!-- Right: Terminal -->
+      <div class="hero-terminal">
+        <div class="glass terminal-card">
+          <div class="terminal-dots">
+            <span style="background:#ff5f57;"></span>
+            <span style="background:#febc2e;"></span>
+            <span style="background:#28c840;"></span>
+          </div>
+          <div class="terminal-body"><span class="accent">$</span> subfinder -d target.com | httpx | nuclei
+[INF] Found 12 subdomains
+[INF] Scanning...
+[critical] CVE-2023-XXXX detected
+[high]     XSS vulnerability found
+[medium]   Open redirect identified
+<span class="accent">$</span> status: <span class="accent">hunting_active_</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================
+     ABOUT
+     ============================ -->
+<section id="about">
+  <div class="container">
+    <h2 class="section-title fade-in">আমি কে এবং <span class="grad-text">কী করি</span></h2>
+    <div class="about-grid fade-in">
+      <div class="glass about-card">
+        <p id="aboutText1">আমি একজন প্রফেশনাল বাগ বাউন্টি হান্টার ও সাইবার সিকিউরিটি রিসার্চার। HackerOne, Bugcrowd সহ বিভিন্ন প্ল্যাটফর্মে একাধিক Hall of Fame অর্জন করেছি।</p>
+        <p id="aboutText2">প্রতিটি ফাইন্ডিং রেসপন্সিবলি রিপোর্ট করি, প্রুফ-অফ-কনসেপ্ট ও রেমিডিয়েশন গাইডলাইন সহ। আমার লক্ষ্য শুধু বাগ খোঁজা নয়, ইন্টারনেটকে একটু বেশি নিরাপদ করা।</p>
+      </div>
+      <div class="stats-grid">
+        <div class="glass stat-card">
+          <span class="stat-num" id="stat1Num">80+</span>
+          <span class="stat-label" id="stat1Label">ভালনারেবিলিটি</span>
+        </div>
+        <div class="glass stat-card">
+          <span class="stat-num" id="stat2Num">25+</span>
+          <span class="stat-label" id="stat2Label">প্রোগ্রাম</span>
+        </div>
+        <div class="glass stat-card">
+          <span class="stat-num" id="stat3Num">5+</span>
+          <span class="stat-label" id="stat3Label">বছরের অভিজ্ঞতা</span>
+        </div>
+        <div class="glass stat-card">
+          <span class="stat-num" id="stat4Num">12</span>
+          <span class="stat-label" id="stat4Label">Hall of Fame</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================
+     SKILLS
+     ============================ -->
+<section id="skills" style="padding-top:0;">
+  <div class="container">
+    <h2 class="section-title fade-in">আমার <span class="grad-text">দক্ষতা</span></h2>
+    <div class="skills-grid fade-in" id="skillsGrid"></div>
+  </div>
+</section>
+
+<!-- ============================
+     WRITEUPS
+     ============================ -->
+<section id="writeups">
+  <div class="container">
+    <h2 class="section-title fade-in">সাম্প্রতিক <span class="grad-text">রাইটআপ</span></h2>
+    <div class="writeups-grid fade-in" id="writeupsGrid"></div>
+  </div>
+</section>
+
+<!-- ============================
+     CONTACT
+     ============================ -->
+<section id="contact">
+  <div class="container">
+    <h2 class="section-title fade-in">চলুন <span class="grad-text">কথা বলি</span></h2>
+    <div class="glass contact-card fade-in">
+      <p class="contact-text" id="contactText">প্রাইভেট বাগ বাউন্টি প্রোগ্রাম বা সিকিউরিটি কনসালটেশনের জন্য যোগাযোগ করুন। সাধারণত ২৪ ঘণ্টার মধ্যে রিপ্লাই করি।</p>
+      <a href="mailto:hello@shunsui.dev" id="emailLink" class="contact-email">hello@shunsui.dev</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <p>© <span id="year"></span> <span id="footerName">শুনসুই কিয়োরাকু</span>. সর্বস্বত্ব সংরক্ষিত।</p>
+  </div>
+</footer>
+
+<!-- ============================
+     ADMIN PANEL (Ctrl+Shift+A)
+     ============================ -->
+<div id="adminPanel">
+  <div class="admin-header">
+    <span><i class="fa-solid fa-screwdriver-wrench" style="margin-right:8px;"></i>Admin Panel</span>
+    <button class="admin-close" onclick="toggleAdmin()">✕</button>
+  </div>
+  <div class="admin-body">
+
+    <div style="margin-bottom:16px;">
+      <button class="admin-btn-save" onclick="saveData()">💾 Save Changes</button>
+      <button class="admin-btn-reset" onclick="resetData()">↺ Reset to Default</button>
+    </div>
+
+    <!-- Theme -->
+    <div class="admin-section">
+      <div class="admin-section-title">🎨 Theme Colors</div>
+      <label class="admin-label">Primary Color</label>
+      <input type="color" id="ap_primary" class="admin-input">
+      <label class="admin-label">Secondary Color</label>
+      <input type="color" id="ap_secondary" class="admin-input">
+    </div>
+
+    <!-- Identity -->
+    <div class="admin-section">
+      <div class="admin-section-title">👤 Identity</div>
+      <label class="admin-label">Navbar Name</label>
+      <input type="text" id="ap_navName" class="admin-input">
+      <label class="admin-label">Hero Name</label>
+      <input type="text" id="ap_heroName" class="admin-input">
+      <label class="admin-label">Logo Initials (2 letters)</label>
+      <input type="text" id="ap_logoInitials" class="admin-input" maxlength="3" placeholder="SK">
+      <label class="admin-label">Availability Text</label>
+      <input type="text" id="ap_availability" class="admin-input">
+      <label class="admin-label">Hero Description</label>
+      <textarea id="ap_heroDesc" class="admin-input" rows="3"></textarea>
+      <label class="admin-label">Typing Roles (কমা দিয়ে আলাদা করুন)</label>
+      <input type="text" id="ap_roles" class="admin-input" placeholder="Bug Bounty Hunter, Security Researcher">
+    </div>
+
+    <!-- About -->
+    <div class="admin-section">
+      <div class="admin-section-title">📋 About</div>
+      <label class="admin-label">Paragraph 1</label>
+      <textarea id="ap_about1" class="admin-input" rows="2"></textarea>
+      <label class="admin-label">Paragraph 2</label>
+      <textarea id="ap_about2" class="admin-input" rows="2"></textarea>
+      <div class="two-col" style="margin-top:10px;">
+        <div>
+          <label class="admin-label">Stat 1 Number</label>
+          <input type="text" id="ap_s1n" class="admin-input">
+          <label class="admin-label">Stat 1 Label</label>
+          <input type="text" id="ap_s1l" class="admin-input">
+        </div>
+        <div>
+          <label class="admin-label">Stat 2 Number</label>
+          <input type="text" id="ap_s2n" class="admin-input">
+          <label class="admin-label">Stat 2 Label</label>
+          <input type="text" id="ap_s2l" class="admin-input">
+        </div>
+      </div>
+      <div class="two-col" style="margin-top:8px;">
+        <div>
+          <label class="admin-label">Stat 3 Number</label>
+          <input type="text" id="ap_s3n" class="admin-input">
+          <label class="admin-label">Stat 3 Label</label>
+          <input type="text" id="ap_s3l" class="admin-input">
+        </div>
+        <div>
+          <label class="admin-label">Stat 4 Number</label>
+          <input type="text" id="ap_s4n" class="admin-input">
+          <label class="admin-label">Stat 4 Label</label>
+          <input type="text" id="ap_s4l" class="admin-input">
+        </div>
+      </div>
+    </div>
+
+    <!-- Writeups -->
+    <div class="admin-section">
+      <div class="admin-section-title">🐛 Writeups</div>
+      <div id="ap_writeupList"></div>
+      <button class="admin-btn-add" onclick="addWriteup()">+ নতুন রাইটআপ যোগ করুন</button>
+    </div>
+
+    <!-- Contact -->
+    <div class="admin-section">
+      <div class="admin-section-title">📬 Contact</div>
+      <label class="admin-label">Contact Description</label>
+      <textarea id="ap_contactText" class="admin-input" rows="2"></textarea>
+      <label class="admin-label">Email Address</label>
+      <input type="text" id="ap_email" class="admin-input">
+    </div>
+
+    <!-- Socials -->
+    <div class="admin-section">
+      <div class="admin-section-title">🔗 Social Links</div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:10px;">Font Awesome icon class ব্যবহার করুন (যেমন: fa-brands fa-twitter)</p>
+      <div id="ap_socialList"></div>
+      <button class="admin-btn-add" onclick="addSocial()">+ নতুন Social Link</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA — এখানে তোমার সব তথ্য পরিবর্তন করো
+// ============================================================
+const DEFAULT_DATA = {
+  theme: { primary: "#00ff88", secondary: "#00c46a" },
+  navName: "shunsui@bugbounty",
+  logoInitials: "SK",
+  heroName: "শুনসুই কিয়োরাকু",
+  availability: "নতুন এনগেজমেন্টের জন্য উন্মুক্ত",
+  heroDesc: "ওয়েব অ্যাপ্লিকেশনে ভালনারেবিলিটি খুঁজে বের করা এবং রেসপন্সিবল ডিসক্লোজারের মাধ্যমে সংস্থাগুলোকে নিরাপদ রাখাই আমার কাজ।",
+  roles: ["Bug Bounty Hunter", "Security Researcher", "Web Pentester"],
+  aboutText1: "আমি একজন প্রফেশনাল বাগ বাউন্টি হান্টার ও সাইবার সিকিউরিটি রিসার্চার। HackerOne, Bugcrowd সহ বিভিন্ন প্ল্যাটফর্মে একাধিক Hall of Fame অর্জন করেছি।",
+  aboutText2: "প্রতিটি ফাইন্ডিং রেসপন্সিবলি রিপোর্ট করি, প্রুফ-অফ-কনসেপ্ট ও রেমিডিয়েশন গাইডলাইন সহ। আমার লক্ষ্য শুধু বাগ খোঁজা নয়, ইন্টারনেটকে একটু বেশি নিরাপদ করা।",
+  stats: [
+    { num: "80+", label: "ভালনারেবিলিটি" },
+    { num: "25+", label: "প্রোগ্রাম" },
+    { num: "5+",  label: "বছরের অভিজ্ঞতা" },
+    { num: "12",  label: "Hall of Fame" }
+  ],
+  skills: [
+    { icon: "fa-solid fa-globe", name: "Web Pentest" },
+    { icon: "fa-solid fa-code", name: "XSS / SQLi" },
+    { icon: "fa-solid fa-user-secret", name: "IDOR / BOLA" },
+    { icon: "fa-solid fa-server", name: "SSRF / XXE" },
+    { icon: "fa-solid fa-terminal", name: "Recon / OSINT" },
+    { icon: "fa-solid fa-shield-halved", name: "Auth Bypass" },
+    { icon: "fa-solid fa-key", name: "API Security" },
+    { icon: "fa-solid fa-bug", name: "CVE Research" }
+  ],
+  contactText: "প্রাইভেট বাগ বাউন্টি প্রোগ্রাম বা সিকিউরিটি কনসালটেশনের জন্য যোগাযোগ করুন। সাধারণত ২৪ ঘণ্টার মধ্যে রিপ্লাই করি।",
+  email: "hello@shunsui.dev",
+  socials: [
+    { icon: "fa-brands fa-twitter", url: "https://twitter.com" },
+    { icon: "fa-brands fa-github", url: "https://github.com" },
+    { icon: "fa-brands fa-linkedin-in", url: "https://linkedin.com" },
+    { icon: "fa-solid fa-bug", url: "https://hackerone.com" }
+  ],
+  writeups: [
+    {
+      title: "IDOR Vulnerability in E-commerce Platform",
+      severity: "High",
+      date: "2024-03-12",
+      excerpt: "অর্ডার ID ম্যানিপুলেট করে অন্য ইউজারের অর্ডার তথ্য ও ব্যক্তিগত ডেটা অ্যাক্সেস করা সম্ভব ছিল।",
+      link: "#"
+    },
+    {
+      title: "Stored XSS in Comment Section",
+      severity: "Medium",
+      date: "2024-01-28",
+      excerpt: "কমেন্ট ফিল্ডে HTML স্যানিটাইজেশনের অভাবে persistent XSS payload সকল ভিজিটরের ব্রাউজারে এক্সিকিউট হচ্ছিল।",
+      link: "#"
+    },
+    {
+      title: "SQL Injection in Search Parameter",
+      severity: "Critical",
+      date: "2023-11-05",
+      excerpt: "সার্চ প্যারামিটারে blind SQLi এর মাধ্যমে সম্পূর্ণ ডেটাবেস ডাম্প করা সম্ভব হয়েছিল।",
+      link: "#"
+    }
+  ]
+};
+
+// ============================================================
+// LOAD DATA (localStorage থেকে অথবা DEFAULT)
+// ============================================================
+let DATA = deepCopy(DEFAULT_DATA);
+
+function deepCopy(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+// ============================================================
+// RENDER — সব UI আঁকো
+// ============================================================
+function render() {
+  const D = DATA;
+
+  // Theme
+  const r = document.documentElement;
+  r.style.setProperty('--primary', D.theme.primary);
+  r.style.setProperty('--secondary', D.theme.secondary);
+  r.style.setProperty('--border', D.theme.primary + '25');
+
+  // Identity
+  const el = (id) => document.getElementById(id);
+  el('navLogoText').textContent = D.logoInitials || 'SK';
+  el('navName').textContent = D.navName;
+  el('heroName').textContent = D.heroName;
+  el('heroAvailability').textContent = D.availability;
+  el('heroDesc').textContent = D.heroDesc;
+  el('aboutText1').textContent = D.aboutText1;
+  el('aboutText2').textContent = D.aboutText2;
+  el('contactText').textContent = D.contactText;
+  el('emailLink').textContent = D.email;
+  el('emailLink').href = 'mailto:' + D.email;
+  el('footerName').textContent = D.heroName;
+  el('year').textContent = new Date().getFullYear();
+
+  // Stats
+  const statIds = ['stat1','stat2','stat3','stat4'];
+  D.stats.forEach((s, i) => {
+    const id = statIds[i];
+    if(el(id+'Num')) el(id+'Num').textContent = s.num;
+    if(el(id+'Label')) el(id+'Label').textContent = s.label;
+  });
+
+  // Skills
+  el('skillsGrid').innerHTML = D.skills.map(s => `
+    <div class="glass skill-item">
+      <i class="${s.icon}"></i>
+      <span class="font-mono" style="font-size:13px;">${s.name}</span>
+    </div>
+  `).join('');
+
+  // Socials
+  el('socialsRow').innerHTML = D.socials.map(s => `
+    <a href="${s.url}" target="_blank" rel="noopener" class="social-icon glass">
+      <i class="${s.icon}"></i>
+    </a>
+  `).join('');
+
+  // Writeups
+  const sevMap = { Critical:'sev-critical', High:'sev-high', Medium:'sev-medium', Low:'sev-low' };
+  el('writeupsGrid').innerHTML = D.writeups.length ? D.writeups.map(w => `
+    <div class="glass writeup-card">
+      <div class="writeup-inner">
+        <div class="writeup-meta">
+          <span class="sev-badge ${sevMap[w.severity]||'sev-medium'}">${w.severity||'Info'}</span>
+          <span class="writeup-date">${w.date||''}</span>
+        </div>
+        <h3 class="writeup-title">${w.title}</h3>
+        <p class="writeup-excerpt">${w.excerpt||''}</p>
+        <a href="${w.link||'#'}" class="writeup-link">বিস্তারিত পড়ুন <i class="fa-solid fa-arrow-right"></i></a>
+      </div>
+    </div>
+  `).join('') : `<p style="color:var(--muted);text-align:center;grid-column:1/-1;">এখনো কোনো রাইটআপ নেই।</p>`;
+}
+
+// ============================================================
+// TYPING EFFECT
+// ============================================================
+let tIdx = 0, tChar = 0, tDel = false;
+function typeLoop() {
+  const roles = DATA.roles;
+  if (!roles || roles.length === 0) return;
+  const word = roles[tIdx];
+  const el = document.getElementById('typedRole');
+  if (!el) return;
+  if (!tDel) {
+    tChar++;
+    el.textContent = word.slice(0, tChar);
+    if (tChar === word.length) { tDel = true; setTimeout(typeLoop, 1600); return; }
+  } else {
+    tChar--;
+    el.textContent = word.slice(0, tChar);
+    if (tChar === 0) { tDel = false; tIdx = (tIdx + 1) % roles.length; }
+  }
+  setTimeout(typeLoop, tDel ? 40 : 85);
+}
+
+// ============================================================
+// SCROLL EFFECTS
+// ============================================================
+window.addEventListener('scroll', function() {
+  const nav = document.getElementById('navbar');
+  if (window.scrollY > 40) nav.classList.add('scrolled');
+  else nav.classList.remove('scrolled');
+});
+
+// Fade in on scroll
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+// ============================================================
+// MOBILE MENU
+// ============================================================
+document.getElementById('hamburgerBtn').addEventListener('click', function() {
+  document.getElementById('mobileMenu').classList.toggle('open');
+});
+function closeMobileMenu() {
+  document.getElementById('mobileMenu').classList.remove('open');
+}
+
+// ============================================================
+// ADMIN PANEL
+// ============================================================
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+    e.preventDefault();
+    toggleAdmin();
+  }
+});
+
+function toggleAdmin() {
+  const panel = document.getElementById('adminPanel');
+  panel.classList.toggle('active');
+  if (panel.classList.contains('active')) populateAdmin();
+}
+
+function populateAdmin() {
+  const D = DATA;
+  const el = (id) => document.getElementById(id);
+
+  el('ap_primary').value = D.theme.primary;
+  el('ap_secondary').value = D.theme.secondary;
+  el('ap_navName').value = D.navName;
+  el('ap_heroName').value = D.heroName;
+  el('ap_logoInitials').value = D.logoInitials || 'SK';
+  el('ap_availability').value = D.availability;
+  el('ap_heroDesc').value = D.heroDesc;
+  el('ap_roles').value = D.roles.join(', ');
+  el('ap_about1').value = D.aboutText1;
+  el('ap_about2').value = D.aboutText2;
+  el('ap_s1n').value = D.stats[0].num; el('ap_s1l').value = D.stats[0].label;
+  el('ap_s2n').value = D.stats[1].num; el('ap_s2l').value = D.stats[1].label;
+  el('ap_s3n').value = D.stats[2].num; el('ap_s3l').value = D.stats[2].label;
+  el('ap_s4n').value = D.stats[3].num; el('ap_s4l').value = D.stats[3].label;
+  el('ap_contactText').value = D.contactText;
+  el('ap_email').value = D.email;
+
+  // Writeups
+  const wl = el('ap_writeupList');
+  wl.innerHTML = '';
+  D.writeups.forEach(function(w, i) {
+    const div = document.createElement('div');
+    div.className = 'writeup-edit-block';
+    div.innerHTML = `
+      <input type="text" placeholder="Title" value="${esc(w.title)}" oninput="DATA.writeups[${i}].title=this.value" class="admin-input" style="margin-bottom:6px;">
+      <select oninput="DATA.writeups[${i}].severity=this.value" class="admin-select" style="margin-bottom:6px;">
+        ${['Critical','High','Medium','Low'].map(s=>`<option ${w.severity===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+      <div class="two-col" style="margin-bottom:6px;">
+        <input type="text" placeholder="YYYY-MM-DD" value="${esc(w.date)}" oninput="DATA.writeups[${i}].date=this.value" class="admin-input">
+        <input type="text" placeholder="Link URL" value="${esc(w.link)}" oninput="DATA.writeups[${i}].link=this.value" class="admin-input">
+      </div>
+      <textarea placeholder="Excerpt..." oninput="DATA.writeups[${i}].excerpt=this.value" class="admin-input" rows="2" style="margin-bottom:4px;">${esc(w.excerpt)}</textarea>
+      <button class="admin-btn-delete" onclick="DATA.writeups.splice(${i},1);populateAdmin();">✕ Delete</button>
+    `;
+    wl.appendChild(div);
+  });
+
+  // Socials
+  const sl = el('ap_socialList');
+  sl.innerHTML = '';
+  D.socials.forEach(function(s, i) {
+    const div = document.createElement('div');
+    div.className = 'social-edit-row';
+    div.innerHTML = `
+      <input type="text" placeholder="fa-brands fa-twitter" value="${esc(s.icon)}" oninput="DATA.socials[${i}].icon=this.value" class="admin-input" style="flex:1;">
+      <input type="text" placeholder="https://..." value="${esc(s.url)}" oninput="DATA.socials[${i}].url=this.value" class="admin-input" style="flex:1;">
+      <button class="admin-btn-delete" onclick="DATA.socials.splice(${i},1);populateAdmin();" style="white-space:nowrap;">✕</button>
+    `;
+    sl.appendChild(div);
+  });
+}
+
+function esc(str) {
+  return (str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function addWriteup() {
+  DATA.writeups.push({ title: "New Writeup", severity: "Medium", date: "2024-01-01", excerpt: "", link: "#" });
+  populateAdmin();
+}
+
+function addSocial() {
+  DATA.socials.push({ icon: "fa-solid fa-link", url: "https://" });
+  populateAdmin();
+}
+
+function saveData() {
+  const el = (id) => document.getElementById(id);
+  DATA.theme.primary    = el('ap_primary').value;
+  DATA.theme.secondary  = el('ap_secondary').value;
+  DATA.navName          = el('ap_navName').value;
+  DATA.heroName         = el('ap_heroName').value;
+  DATA.logoInitials     = el('ap_logoInitials').value || 'SK';
+  DATA.availability     = el('ap_availability').value;
+  DATA.heroDesc         = el('ap_heroDesc').value;
+  DATA.roles            = el('ap_roles').value.split(',').map(r=>r.trim()).filter(Boolean);
+  DATA.aboutText1       = el('ap_about1').value;
+  DATA.aboutText2       = el('ap_about2').value;
+  DATA.stats[0]         = { num: el('ap_s1n').value, label: el('ap_s1l').value };
+  DATA.stats[1]         = { num: el('ap_s2n').value, label: el('ap_s2l').value };
+  DATA.stats[2]         = { num: el('ap_s3n').value, label: el('ap_s3l').value };
+  DATA.stats[3]         = { num: el('ap_s4n').value, label: el('ap_s4l').value };
+  DATA.contactText      = el('ap_contactText').value;
+  DATA.email            = el('ap_email').value;
+
+  render();
+  // Reset typing
+  tIdx = 0; tChar = 0; tDel = false;
+  alert('✅ সফলভাবে সেভ হয়েছে!');
+}
+
+function resetData() {
+  if (confirm('সব ডিফল্ট ডাটায় রিসেট করবেন?')) {
+    DATA = deepCopy(DEFAULT_DATA);
+    render();
+    tIdx = 0; tChar = 0; tDel = false;
+    alert('✅ রিসেট সম্পন্ন!');
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+render();
+typeLoop();
+</script>
+</body>
+</html>
